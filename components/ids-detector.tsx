@@ -4,7 +4,7 @@ import { useState, FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AlertCircle, CheckCircle, Shield, Activity } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield } from 'lucide-react'
 
 interface DetectionResult {
   status: 'NORMAL' | 'ATTACK_DETECTED' | 'ERROR'
@@ -36,7 +36,6 @@ export function IDSDetector() {
     setResult(null)
 
     try {
-      // Form data for submission to Flask backend
       const formPayload = new FormData()
       formPayload.append('f1', formData.duration)
       formPayload.append('f2', formData.protocol)
@@ -44,13 +43,11 @@ export function IDSDetector() {
       formPayload.append('f4', formData.src_bytes)
       formPayload.append('f5', formData.dst_bytes)
 
-      // Submit to your Flask backend
       const response = await fetch('http://localhost:5000/', {
         method: 'POST',
         body: formPayload,
       })
 
-      // Parse the HTML response
       const html = await response.text()
       const isAttack = html.includes('⚠️ ATTACK DETECTED')
       const isError = html.includes('INPUT ERROR')
@@ -58,27 +55,27 @@ export function IDSDetector() {
       if (isError) {
         setResult({
           status: 'ERROR',
-          message: 'Invalid input. Please check your values.',
-          timestamp: new Date().toLocaleTimeString(),
+          message: 'Dữ liệu đầu vào không hợp lệ. Vui lòng kiểm tra các giá trị.',
+          timestamp: new Date().toLocaleTimeString('vi-VN'),
         })
       } else if (isAttack) {
         setResult({
           status: 'ATTACK_DETECTED',
-          message: '⚠️ ATTACK DETECTED',
-          timestamp: new Date().toLocaleTimeString(),
+          message: 'Phát hiện tấn công',
+          timestamp: new Date().toLocaleTimeString('vi-VN'),
         })
       } else {
         setResult({
           status: 'NORMAL',
-          message: '✓ NORMAL',
-          timestamp: new Date().toLocaleTimeString(),
+          message: 'Bình thường',
+          timestamp: new Date().toLocaleTimeString('vi-VN'),
         })
       }
     } catch (error) {
       setResult({
         status: 'ERROR',
-        message: 'Connection error. Make sure Flask server is running on localhost:5000',
-        timestamp: new Date().toLocaleTimeString(),
+        message: 'Lỗi kết nối. Vui lòng kiểm tra máy chủ Flask đang chạy trên localhost:5000',
+        timestamp: new Date().toLocaleTimeString('vi-VN'),
       })
     } finally {
       setIsLoading(false)
@@ -86,103 +83,100 @@ export function IDSDetector() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="space-y-3 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
             <Shield className="w-8 h-8 text-primary" />
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">IDS</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Hệ Thống Phát Hiện Xâm Nhập</h1>
           </div>
-          <p className="text-lg text-muted-foreground">
-            Intrusion Detection System powered by Decision Tree ML
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Advanced network security threat detection and analysis
+          <p className="text-muted-foreground text-lg">
+            Phân tích và phát hiện các mối đe dọa an ninh mạng bằng công nghệ học máy
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Detection Card */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Main Form */}
           <div className="lg:col-span-2">
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Network Analysis
-                </CardTitle>
-                <CardDescription>Enter network parameters for threat detection</CardDescription>
+            <Card className="border-border shadow-sm">
+              <CardHeader className="border-b border-border">
+                <CardTitle className="text-xl">Nhập Thông Số Mạng</CardTitle>
+                <CardDescription>Điền các thông tin chi tiết về kết nối mạng</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="duration" className="text-sm font-medium">
-                        Duration (seconds)
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="duration" className="block text-sm font-medium mb-2">
+                        Thời Lượng (giây)
                       </label>
                       <Input
                         id="duration"
-                        placeholder="e.g., 1500"
+                        type="number"
+                        placeholder="1500"
                         value={formData.duration}
                         onChange={(e) => handleInputChange('duration', e.target.value)}
                         disabled={isLoading}
-                        className="bg-input border-border/50"
+                        className="border-border"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="protocol" className="text-sm font-medium">
-                        Protocol
+                    <div>
+                      <label htmlFor="protocol" className="block text-sm font-medium mb-2">
+                        Giao Thức
                       </label>
                       <Input
                         id="protocol"
-                        placeholder="e.g., tcp"
+                        placeholder="tcp"
                         value={formData.protocol}
                         onChange={(e) => handleInputChange('protocol', e.target.value)}
                         disabled={isLoading}
-                        className="bg-input border-border/50"
+                        className="border-border"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="service" className="text-sm font-medium">
-                        Service
+                    <div>
+                      <label htmlFor="service" className="block text-sm font-medium mb-2">
+                        Dịch Vụ
                       </label>
                       <Input
                         id="service"
-                        placeholder="e.g., http"
+                        placeholder="http"
                         value={formData.service}
                         onChange={(e) => handleInputChange('service', e.target.value)}
                         disabled={isLoading}
-                        className="bg-input border-border/50"
+                        className="border-border"
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label htmlFor="src_bytes" className="text-sm font-medium">
-                        Source Bytes
+                    <div>
+                      <label htmlFor="src_bytes" className="block text-sm font-medium mb-2">
+                        Byte Nguồn
                       </label>
                       <Input
                         id="src_bytes"
-                        placeholder="e.g., 4000"
+                        type="number"
+                        placeholder="4000"
                         value={formData.src_bytes}
                         onChange={(e) => handleInputChange('src_bytes', e.target.value)}
                         disabled={isLoading}
-                        className="bg-input border-border/50"
+                        className="border-border"
                       />
                     </div>
 
-                    <div className="space-y-2 sm:col-span-2">
-                      <label htmlFor="dst_bytes" className="text-sm font-medium">
-                        Destination Bytes
+                    <div className="sm:col-span-2">
+                      <label htmlFor="dst_bytes" className="block text-sm font-medium mb-2">
+                        Byte Đích
                       </label>
                       <Input
                         id="dst_bytes"
-                        placeholder="e.g., 8000"
+                        type="number"
+                        placeholder="8000"
                         value={formData.dst_bytes}
                         onChange={(e) => handleInputChange('dst_bytes', e.target.value)}
                         disabled={isLoading}
-                        className="bg-input border-border/50"
+                        className="border-border"
                       />
                     </div>
                   </div>
@@ -190,9 +184,9 @@ export function IDSDetector() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium h-10"
                   >
-                    {isLoading ? 'Analyzing...' : 'Analyze Network'}
+                    {isLoading ? 'Đang phân tích...' : 'Phân Tích'}
                   </Button>
                 </form>
               </CardContent>
@@ -200,21 +194,23 @@ export function IDSDetector() {
           </div>
 
           {/* Status Card */}
-          <div className="lg:col-span-1">
-            <Card className="border-border/50 bg-card/50 backdrop-blur-sm h-full">
-              <CardHeader>
-                <CardTitle className="text-base">System Status</CardTitle>
+          <div>
+            <Card className="border-border shadow-sm h-full">
+              <CardHeader className="border-b border-border">
+                <CardTitle className="text-lg">Trạng Thái Hệ Thống</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
-                  <span className="text-sm text-muted-foreground">System Online</span>
-                </div>
-                <div className="h-px bg-border/50" />
+              <CardContent className="pt-6 space-y-6">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Last Analysis</p>
-                  <p className="text-sm text-foreground">
-                    {result?.timestamp || 'Awaiting input...'}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <p className="text-sm font-medium">Hoạt Động</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Sẵn sàng phân tích</p>
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Kỳ Cuối Cùng</p>
+                  <p className="text-sm font-medium">
+                    {result?.timestamp || 'Chưa có phân tích'}
                   </p>
                 </div>
               </CardContent>
@@ -225,68 +221,69 @@ export function IDSDetector() {
         {/* Result Alert */}
         {result && (
           <div
-            className={`rounded-lg border p-6 backdrop-blur-sm animate-in fade-in slide-in-from-top-4 ${
+            className={`mt-8 rounded-lg border p-6 animate-in fade-in slide-in-from-top-4 ${
               result.status === 'NORMAL'
-                ? 'border-green-500/30 bg-green-500/5'
+                ? 'border-green-200 bg-green-50'
                 : result.status === 'ATTACK_DETECTED'
-                  ? 'border-destructive/30 bg-destructive/5'
-                  : 'border-yellow-500/30 bg-yellow-500/5'
+                  ? 'border-red-200 bg-red-50'
+                  : 'border-yellow-200 bg-yellow-50'
             }`}
           >
             <div className="flex items-start gap-4">
               {result.status === 'NORMAL' ? (
-                <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
               ) : (
-                <AlertCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
                 <h3
                   className={`font-semibold mb-1 ${
                     result.status === 'NORMAL'
-                      ? 'text-green-500'
+                      ? 'text-green-900'
                       : result.status === 'ATTACK_DETECTED'
-                        ? 'text-destructive'
-                        : 'text-yellow-500'
+                        ? 'text-red-900'
+                        : 'text-yellow-900'
                   }`}
                 >
                   {result.status === 'NORMAL'
-                    ? 'Connection Secure'
+                    ? 'Kết Nối An Toàn'
                     : result.status === 'ATTACK_DETECTED'
-                      ? 'Threat Detected'
-                      : 'Error Processing'}
+                      ? 'Phát Hiện Mối Đe Dọa'
+                      : 'Lỗi Xử Lý'}
                 </h3>
-                <p className="text-sm text-foreground/90">{result.message}</p>
+                <p className="text-sm text-foreground/80">{result.message}</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Info Section */}
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-base">How It Works</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-3">
-            <p>
-              This IDS uses a Decision Tree machine learning model trained on network traffic patterns to detect potential
-              security threats in real-time.
-            </p>
-            <ul className="list-disc list-inside space-y-2">
-              <li>
-                <span className="font-medium text-foreground">Duration:</span> Connection duration in seconds
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Protocol:</span> Network protocol type (tcp, udp, icmp, etc.)
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Service:</span> Application service (http, ftp, ssh, etc.)
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Source/Destination Bytes:</span> Data transfer volume
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="mt-8">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="border-b border-border">
+              <CardTitle className="text-lg">Cách Hoạt Động</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-foreground/80 mb-4">
+                Hệ thống sử dụng mô hình học máy Decision Tree được huấn luyện từ các mẫu lưu lượng mạng để phát hiện các mối đe dọa an ninh tiềm ẩn.
+              </p>
+              <div className="space-y-3 text-sm text-foreground/80">
+                <div>
+                  <span className="font-medium text-foreground">Thời Lượng:</span> Thời gian kết nối tính bằng giây
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Giao Thức:</span> Loại giao thức (tcp, udp, icmp, v.v.)
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Dịch Vụ:</span> Ứng dụng dịch vụ (http, ftp, ssh, v.v.)
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Byte Nguồn/Đích:</span> Khối lượng truyền dữ liệu
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

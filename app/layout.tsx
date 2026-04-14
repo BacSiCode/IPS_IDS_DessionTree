@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'IDS - Intrusion Detection System',
-  description: 'Advanced network security threat detection powered by machine learning',
+  title: 'Hệ Thống Phát Hiện Xâm Nhập',
+  description: 'Hệ thống phát hiện mối đe dọa an ninh mạng bằng công nghệ học máy',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark bg-background">
+    <html lang="en" className="bg-background">
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
