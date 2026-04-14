@@ -48,9 +48,9 @@ export function IDSDetector() {
         body: formPayload,
       })
 
-      const html = await response.text()
-      const isAttack = html.includes('⚠️ ATTACK DETECTED')
-      const isError = html.includes('INPUT ERROR')
+      const data = await response.json()
+      const isAttack = data.status === 'ATTACK_DETECTED'
+      const isError = data.status === 'ERROR'
 
       if (isError) {
         setResult({
@@ -92,7 +92,7 @@ export function IDSDetector() {
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Hệ Thống Phát Hiện Xâm Nhập</h1>
           </div>
           <p className="text-muted-foreground text-lg">
-            Phân tích và phát hiện các mối đe dọa an ninh mạng bằng công nghệ học máy
+              Ứng dụng Decision Tree trong nhận diện mối đe dọa
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export function IDSDetector() {
           <div className="lg:col-span-2">
             <Card className="border-border shadow-sm">
               <CardHeader className="border-b border-border">
-                <CardTitle className="text-xl">Nhập Thông Số Mạng</CardTitle>
+                <CardTitle className="text-xl">Nhập thông số mạng</CardTitle>
                 <CardDescription>Điền các thông tin chi tiết về kết nối mạng</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -202,13 +202,13 @@ export function IDSDetector() {
               <CardContent className="pt-6 space-y-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     <p className="text-sm font-medium">Hoạt Động</p>
                   </div>
                   <p className="text-xs text-muted-foreground">Sẵn sàng phân tích</p>
                 </div>
                 <div className="border-t border-border pt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Kỳ Cuối Cùng</p>
+                  <p className="text-xs text-muted-foreground mb-2">Lần quét gần nhất</p>
                   <p className="text-sm font-medium">
                     {result?.timestamp || 'Chưa có phân tích'}
                   </p>
@@ -261,7 +261,7 @@ export function IDSDetector() {
         <div className="mt-8">
           <Card className="border-border shadow-sm">
             <CardHeader className="border-b border-border">
-              <CardTitle className="text-lg">Cách Hoạt Động</CardTitle>
+              <CardTitle className="text-lg">Hoạt Động</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-foreground/80 mb-4">
@@ -283,6 +283,11 @@ export function IDSDetector() {
               </div>
             </CardContent>
           </Card>
+        </div>
+        <div className="mt-12 border-t border-border pt-6 text-center">
+          <p className="text-sm font-medium text-muted-foreground">
+            @By nhóm 1
+          </p>
         </div>
       </div>
     </div>
