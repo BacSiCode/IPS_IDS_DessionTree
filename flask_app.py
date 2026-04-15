@@ -101,7 +101,7 @@ def predict():
             'confidence': round(confidence, 2)
         }
         analysis_logs.append(log_entry)
-        if (len(analysis_logs) > 200): analysis_logs.pop(0)
+        if (len(analysis_logs) > 10000): analysis_logs.pop(0)
         
         return jsonify({
             'status': status,
@@ -115,7 +115,7 @@ def predict():
 @app.route('/api/logs', methods=['GET', 'POST', 'DELETE'])
 def handle_logs():
     if request.method == 'GET':
-        return jsonify({'logs': list(reversed(analysis_logs[-200:]))})
+        return jsonify({'logs': list(reversed(analysis_logs[-10000:]))})
         
     elif request.method == 'DELETE':
         analysis_logs.clear()
@@ -157,7 +157,7 @@ def handle_logs():
                 'note': f"IP: {source_ip} | Path: {path}"
             }
             analysis_logs.append(log_entry)
-            if (len(analysis_logs) > 200): analysis_logs.pop(0)
+            if (len(analysis_logs) > 10000): analysis_logs.pop(0)
                 
             return jsonify({'success': True, 'status': status}), 200
         except Exception as e:
