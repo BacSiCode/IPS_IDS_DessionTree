@@ -125,23 +125,35 @@ def handle_logs():
         try:
             data = request.get_json() if request.is_json else request.form
             
+            # Map features from SpiritAds sensor
+            # We use defaults for missing values to ensure 14-feature compatibility
             features_dict = {
-                'Destination Port': 80,
-                'Flow Duration': data.get('duration', 500),
-                'Total Fwd Packets': 10 if float(data.get('src_bytes', 0)) > 1000 else 2,
-                'Flow Bytes/s': float(data.get('src_bytes', 800)),
-                'Packet Length Mean': 500
+                'Destination Port':       data.get('port', 80),
+                'Flow Duration':          data.get('duration', 500),
+                'Total Fwd Packets':      data.get('fwd_packets', 2),
+                'Total Backward Packets': data.get('bwd_packets', 1),
+                'Flow Bytes/s':           float(data.get('src_bytes', 800)),
+                'Flow Packets/s':         data.get('packets_per_sec', 50),
+                'Packet Length Mean':     data.get('pkt_len_mean', 500),
+                'Packet Length Std':      data.get('pkt_len_std', 100),
+                'SYN Flag Count':         data.get('syn_count', 0),
+                'ACK Flag Count':         data.get('ack_count', 1),
+                'Average Packet Size':    data.get('avg_pkt_size', 500),
+                'Init_Win_bytes_forward': data.get('win_bytes', 8192),
+                'Active Mean':            0.0,
+                'Idle Mean':              0.0
             }
             
+            # THE AI DECIDES! 🧠
             prediction, confidence = predict_single(features_dict)
             
+            # Differentiate based on AI Decision Tree
+            status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
+            
+            # Overwrite if it's a confirmed static threat (like Honeypot)
             external_status = data.get('status')
-            if external_status in ['ATTACK_DETECTED', 'NORMAL']:
-                status = external_status
-                if (status == 'ATTACK_DETECTED' and prediction == 0) or (status == 'NORMAL' and prediction == 1):
-                     confidence = 99.0
-            else:
-                status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
+            if external_status == 'ATTACK_DETECTED' and confidence < 80:
+                 status = "ATTACK_DETECTED" # Trust the sensor if it's a clear honeypot hit
 
             source_ip = data.get('ip') if 'ip' in data else 'Unknown'
             path = data.get('path') if 'path' in data else '/'
@@ -159,7 +171,8 @@ def handle_logs():
             analysis_logs.append(log_entry)
             if (len(analysis_logs) > 10000): analysis_logs.pop(0)
                 
-            return jsonify({'success': True, 'status': status}), 200
+            return jsonify({'success': True, 'status': status, 'prediction': prediction}), 200
+
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
