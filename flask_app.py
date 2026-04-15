@@ -8,34 +8,58 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# Load model and encoders
+# Load model
 print("Loading model...")
-with open('model.pkl', 'rb') as f:
-    model = pickle.load(f)
+try:
+    with open('model.pkl', 'rb') as f:
+        model = pickle.load(f)
+except:
+    model = None
+    print("Warning: model.pkl not found/failed to load. Please train first.")
 
-with open('encoder_protocol.pkl', 'rb') as f:
-    encoder_protocol = pickle.load(f)
-
-with open('encoder_service.pkl', 'rb') as f:
-    encoder_service = pickle.load(f)
-
-# Store analysis logs (in-memory, will reset on app restart)
+# Store analysis logs
 analysis_logs = []
 
-def predict_single(duration, protocol, service, src_bytes, dst_bytes):
-    """Make prediction for single record"""
-    # Encode categorical features
-    try:
-        protocol_encoded = encoder_protocol.transform([protocol.strip().lower()])[0]
-        service_encoded = encoder_service.transform([service.strip().lower()])[0]
-    except:
-        protocol_encoded = 0
-        service_encoded = 0
+def predict_single(features_dict):
+    """Make prediction for single record with 14 features"""
+    if model is None:
+        return 0, 0.0
+        
+    expected_features = [
+        'Destination Port', 'Flow Duration', 'Total Fwd Packets', 'Total Backward Packets',
+        'Flow Bytes/s', 'Flow Packets/s', 'Packet Length Mean', 'Packet Length Std',
+        'SYN Flag Count', 'ACK Flag Count', 'Average Packet Size', 'Init_Win_bytes_forward',
+        'Active Mean', 'Idle Mean'
+    ]
     
-    # Prepare features
-    features = np.array([[duration, protocol_encoded, service_encoded, src_bytes, dst_bytes]])
+    default_values = {
+        'Destination Port': 80,
+        'Flow Duration': 500,
+        'Total Fwd Packets': 2,
+        'Total Backward Packets': 1,
+        'Flow Bytes/s': 1000.0,
+        'Flow Packets/s': 50.0,
+        'Packet Length Mean': 500.0,
+        'Packet Length Std': 100.0,
+        'SYN Flag Count': 0,
+        'ACK Flag Count': 1,
+        'Average Packet Size': 500.0,
+        'Init_Win_bytes_forward': 8192,
+        'Active Mean': 0.0,
+        'Idle Mean': 0.0
+    }
     
-    # Make prediction
+    feature_arr = []
+    for f in expected_features:
+        val = features_dict.get(f)
+        try:
+            val_float = float(val) if val is not None else default_values[f]
+        except:
+            val_float = default_values[f]
+        feature_arr.append(val_float)
+        
+    features = np.array([feature_arr])
+    
     prediction = model.predict(features)[0]
     probability = model.predict_proba(features)[0]
     confidence = float(max(probability)) * 100
@@ -44,50 +68,40 @@ def predict_single(duration, protocol, service, src_bytes, dst_bytes):
 
 @app.route('/api/options', methods=['GET'])
 def get_options():
-    """Get dropdown options for protocols and services"""
-    protocols = sorted(list(encoder_protocol.classes_))
-    services = sorted(list(encoder_service.classes_))
-    
-    return jsonify({
-        'protocols': protocols,
-        'services': services
-    })
+    return jsonify({'protocols': [], 'services': []})
 
 @app.route('/', methods=['POST'])
 def predict():
     try:
-        # Get form data
-        duration = float(request.form.get('f1'))
-        protocol = request.form.get('f2').strip().lower()
-        service = request.form.get('f3').strip().lower()
-        src_bytes = float(request.form.get('f4'))
-        dst_bytes = float(request.form.get('f5'))
+        data = request.form
+        features_dict = {
+            'Destination Port': data.get('f1'),
+            'Flow Duration': data.get('f2'),
+            'Total Fwd Packets': data.get('f3'),
+            'Flow Bytes/s': data.get('f4'),
+            'Packet Length Mean': data.get('f5')
+        }
         
-        prediction, confidence = predict_single(duration, protocol, service, src_bytes, dst_bytes)
+        prediction, confidence = predict_single(features_dict)
         
-        # Determine status
         if prediction == 1:
             status = "ATTACK_DETECTED"
             message = "Phát hiện tấn công"
         else:
             status = "NORMAL"
             message = "Bình thường"
-        
-        # Log the analysis
+            
         log_entry = {
             'timestamp': datetime.now().isoformat(),
-            'duration': duration,
-            'protocol': protocol,
-            'service': service,
-            'src_bytes': src_bytes,
-            'dst_bytes': dst_bytes,
+            'port': features_dict['Destination Port'],
+            'duration': features_dict['Flow Duration'],
+            'fwd_packets': features_dict['Total Fwd Packets'],
+            'src_bytes': features_dict['Flow Bytes/s'],
             'status': status,
             'confidence': round(confidence, 2)
         }
         analysis_logs.append(log_entry)
-        # Keep only last 100 logs
-        if len(analysis_logs) > 100:
-            analysis_logs.pop(0)
+        if len(analysis_logs) > 100: analysis_logs.pop(0)
         
         return jsonify({
             'status': status,
@@ -95,74 +109,55 @@ def predict():
             'prediction': prediction,
             'confidence': round(confidence, 2)
         })
-    
-    except ValueError:
-        return jsonify({
-            'status': 'ERROR',
-            'message': 'Dữ liệu đầu vào không hợp lệ',
-            'error': 'Invalid input values'
-        }), 400
     except Exception as e:
-        return jsonify({
-            'status': 'ERROR',
-            'message': str(e)
-        }), 500
+        return jsonify({'status': 'ERROR', 'message': str(e)}), 500
 
 @app.route('/api/logs', methods=['GET', 'POST', 'DELETE'])
 def handle_logs():
     if request.method == 'GET':
-        """Get analysis logs"""
-        return jsonify({
-            'logs': list(reversed(analysis_logs[-50:]))  # Return last 50, reversed (newest first)
-        })
+        return jsonify({'logs': list(reversed(analysis_logs[-50:]))})
         
     elif request.method == 'DELETE':
-        """Clear all analysis logs"""
         analysis_logs.clear()
         return jsonify({'message': 'Logs cleared successfully'})
         
     elif request.method == 'POST':
-        """Receive external traffic log (e.g. from SpiritAds Express server)"""
         try:
             data = request.get_json() if request.is_json else request.form
             
-            # Extract features or map Web concepts to ML features
-            duration = float(data.get('duration', 1.0))
-            protocol = str(data.get('protocol', 'tcp')).strip().lower()
-            service = str(data.get('service', 'http')).strip().lower()
-            src_bytes = float(data.get('src_bytes', 500))
-            dst_bytes = float(data.get('dst_bytes', 1000))
+            features_dict = {
+                'Destination Port': 80,
+                'Flow Duration': data.get('duration', 500),
+                'Total Fwd Packets': 10 if float(data.get('src_bytes', 0)) > 1000 else 2,
+                'Flow Bytes/s': float(data.get('src_bytes', 800)),
+                'Packet Length Mean': 500
+            }
             
-            source_ip = data.get('ip', 'Unknown')
-            path = data.get('path', '/')
+            prediction, confidence = predict_single(features_dict)
             
-            prediction, confidence = predict_single(duration, protocol, service, src_bytes, dst_bytes)
-            
-            # If the external system ALREADY flagged it, override the status
             external_status = data.get('status')
             if external_status in ['ATTACK_DETECTED', 'NORMAL']:
                 status = external_status
-                # Adjust confidence if overridden
                 if (status == 'ATTACK_DETECTED' and prediction == 0) or (status == 'NORMAL' and prediction == 1):
                      confidence = 99.0
             else:
                 status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
 
-            # Log the analysis
+            source_ip = data.get('ip') if 'ip' in data else 'Unknown'
+            path = data.get('path') if 'path' in data else '/'
+
             log_entry = {
                 'timestamp': datetime.now().isoformat(),
-                'duration': duration,
-                'protocol': protocol,
-                'service': service,
-                'src_bytes': src_bytes,
-                'dst_bytes': dst_bytes,
+                'port': features_dict['Destination Port'],
+                'duration': features_dict['Flow Duration'],
+                'fwd_packets': features_dict['Total Fwd Packets'],
+                'src_bytes': features_dict['Flow Bytes/s'],
                 'status': status,
                 'confidence': round(confidence, 2),
                 'note': f"IP: {source_ip} | Path: {path}"
             }
             analysis_logs.append(log_entry)
-            if len(analysis_logs) > 100:
-                analysis_logs.pop(0)
+            if len(analysis_logs) > 100: analysis_logs.pop(0)
                 
             return jsonify({'success': True, 'status': status}), 200
         except Exception as e:
@@ -170,79 +165,36 @@ def handle_logs():
 
 @app.route('/api/batch', methods=['POST'])
 def batch_predict():
-    """Process CSV file for batch analysis"""
     try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-        
+        if 'file' not in request.files: return jsonify({'error': 'No file'}), 400
         file = request.files['file']
-        if not file.filename.endswith('.csv'):
-            return jsonify({'error': 'Invalid file format. Please upload CSV.'}), 400
         
-        # Read CSV
         df = pd.read_csv(file)
-        
-        # Validate columns
-        required_cols = ['duration', 'protocol', 'service', 'src_bytes', 'dst_bytes']
-        if not all(col in df.columns for col in required_cols):
-            return jsonify({
-                'error': f'CSV must contain columns: {", ".join(required_cols)}'
-            }), 400
-        
         results = []
         attack_count = 0
         
         for _, row in df.iterrows():
             try:
-                duration = float(row['duration'])
-                protocol = str(row['protocol']).strip().lower()
-                service = str(row['service']).strip().lower()
-                src_bytes = float(row['src_bytes'])
-                dst_bytes = float(row['dst_bytes'])
-                
-                prediction, confidence = predict_single(duration, protocol, service, src_bytes, dst_bytes)
-                
+                features_dict = row.to_dict()
+                prediction, confidence = predict_single(features_dict)
                 status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
-                if prediction == 1:
-                    attack_count += 1
+                if prediction == 1: attack_count += 1
                 
                 results.append({
-                    'duration': duration,
-                    'protocol': protocol,
-                    'service': service,
                     'status': status,
                     'confidence': round(confidence, 2)
                 })
-                
-                # Log the analysis
-                log_entry = {
-                    'timestamp': datetime.now().isoformat(),
-                    'duration': duration,
-                    'protocol': protocol,
-                    'service': service,
-                    'src_bytes': src_bytes,
-                    'dst_bytes': dst_bytes,
-                    'status': status,
-                    'confidence': round(confidence, 2)
-                }
-                analysis_logs.append(log_entry)
-            except Exception as row_error:
+            except:
                 continue
-        
-        if len(analysis_logs) > 100:
-            analysis_logs[:] = analysis_logs[-100:]
-        
+                
         total = len(results)
-        normal_count = total - attack_count
-        
         return jsonify({
             'total': total,
             'attacks': attack_count,
-            'normal': normal_count,
+            'normal': total - attack_count,
             'attack_rate': round(attack_count / total * 100, 2) if total > 0 else 0,
-            'results': results[:100]  # Return first 100 results
+            'results': results[:100]
         })
-    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
