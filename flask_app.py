@@ -48,7 +48,7 @@ def predict_single(features_dict):
         'SYN Flag Count': 0,
         'ACK Flag Count': 1,
         'Average Packet Size': 6.0,
-        'Init_Win_bytes_forward': 29200,
+        'Init_Win_bytes_forward': 8192,
         'Active Mean': 0.0,
         'Idle Mean': 0.0
     }
@@ -145,7 +145,7 @@ def handle_logs():
                 'SYN Flag Count':         data.get('syn_count', 0),
                 'ACK Flag Count':         data.get('ack_count', 1),
                 'Average Packet Size':    data.get('avg_pkt_size', 6),
-                'Init_Win_bytes_forward': data.get('win_bytes', 29200),
+                'Init_Win_bytes_forward': data.get('win_bytes', 8192),
                 'Active Mean':            0.0,
                 'Idle Mean':              0.0
             }
@@ -219,4 +219,6 @@ def batch_predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import os
+    port = int(os.environ.get("PORT", 5005))
+    app.run(debug=True, host='0.0.0.0', port=port)
