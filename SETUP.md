@@ -31,6 +31,16 @@ pnpm install
 pip install -r requirements.txt
 ```
 
+### 1.1 Cấu Hình Environment (Local)
+
+Tạo file `.env.local` ở root project:
+
+```
+NEXT_PUBLIC_FLASK_API_URL=http://localhost:5000
+```
+
+Xem file `.env.example` để tham khảo các biến khác.
+
 ### 2. Chuẩn Bị Dữ Liệu
 
 - Đặt file `data.csv` vào **root** của project
@@ -93,8 +103,19 @@ pnpm dev
 - Protocol/service trong input phải có trong data.csv
 - Ví dụ: tcp, udp, http, ftp, ssh, etc.
 
+## Deploy lên Production
+
+Để deploy lên Vercel + Railway (recommended):
+
+1. **Deploy Flask Backend lên Railway** - Xem file `DEPLOY_RAILWAY.md`
+2. **Deploy Frontend lên Vercel** - Sử dụng GitHub connection tự động
+3. **Cấu hình Environment Variable** - Thêm `NEXT_PUBLIC_FLASK_API_URL` trên Vercel
+
+Chi tiết: Xem `DEPLOY_RAILWAY.md`
+
 ## Notes
 
 - Model sử dụng Decision Tree Classifier
 - Hỗ trợ phát hiện: Normal traffic vs Attack traffic
 - Frontend giao diện Tiếng Việt, responsive trên mobile/desktop
+- Backend URL có thể cấu hình qua environment variable `NEXT_PUBLIC_FLASK_API_URL`

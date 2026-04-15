@@ -42,6 +42,9 @@ export function IDSDetector() {
   const [uploadingBatch, setUploadingBatch] = useState(false)
   const [showLogs, setShowLogs] = useState(true)
 
+  // Get Flask API URL from environment or use localhost as fallback
+  const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5000'
+
   const [formData, setFormData] = useState({
     duration: '',
     protocol: '',
@@ -54,7 +57,7 @@ export function IDSDetector() {
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/options')
+        const response = await fetch(`${FLASK_API_URL}/api/options`)
         const data = await response.json()
         setProtocols(data.protocols)
         setServices(data.services)
@@ -68,7 +71,7 @@ export function IDSDetector() {
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/logs')
+      const response = await fetch(`${FLASK_API_URL}/api/logs`)
       const data = await response.json()
       setLogs(data.logs)
     } catch (error) {
@@ -107,7 +110,7 @@ export function IDSDetector() {
       formPayload.append('f4', formData.src_bytes)
       formPayload.append('f5', formData.dst_bytes)
 
-      const response = await fetch('http://localhost:5000/', {
+      const response = await fetch(`${FLASK_API_URL}/`, {
         method: 'POST',
         body: formPayload,
       })
@@ -153,7 +156,7 @@ export function IDSDetector() {
       const formPayload = new FormData()
       formPayload.append('file', file)
 
-      const response = await fetch('http://localhost:5000/api/batch', {
+      const response = await fetch(`${FLASK_API_URL}/api/batch`, {
         method: 'POST',
         body: formPayload,
       })
