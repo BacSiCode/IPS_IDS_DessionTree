@@ -1,35 +1,57 @@
-# IPS_IDS_DessionTree
+🛡️ **IPS/IDS Network Security with Decision Tree**
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+Dự án xây dựng **hệ thống Phát hiện Xâm nhập Mạng (IDS)** ứng dụng thuật
+toán học máy **Decision Tree (Cây quyết định)**. Hệ thống cho phép giám sát
+lưu lượng mạng theo thời gian thực và phân tích dữ liệu hàng loạt để
+nhận diện các hành vi tấn công mạng dựa trên bộ dữ liệu huấn luyện
+chuyên sâu.
 
-## Built with v0
+------------------------------------------------------------------------
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+🚀 **Tính năng chính**
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_KOtSIqRhRGzbKfaXO6hO4ZMGlQS1)
+-   Phân tích Real-time: Nhập các thông số mạng (Duration, Protocol,
+    Service, Bytes) để nhận kết quả cảnh báo ngay lập tức.
+-   Thuật toán Decision Tree: Sử dụng mô hình Cây quyết định để phân
+    loại chính xác các loại hình kết nối (Normal vs Attack).
+-   Độ tin cậy AI (Confidence Score): Hiển thị trực quan mức độ tin
+    tưởng của mô hình đối với mỗi dự đoán thông qua thanh Progress Bar.
+-   Xử lý Hàng loạt (Batch Processing): Hỗ trợ tải lên file CSV để phân
+    tích hàng ngàn dòng dữ liệu cùng lúc.
+-   Nhật ký Hệ thống (Session Logs): Lưu trữ lịch sử các lần phân tích
+    trong phiên làm việc để quản trị viên dễ dàng theo dõi.
 
-## Getting Started
+------------------------------------------------------------------------
 
-First, run the development server:
+💻 **Công nghệ sử dụng**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+Frontend: - Next.js (React) - shadcn/ui & Tailwind CSS - Lucide React -
+Vercel
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Backend: - Python - Flask & Flask-CORS - Scikit-learn, Numpy, Pandas -
+Render / PythonAnywhere
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+------------------------------------------------------------------------
 
-## Learn More
+🛠️ **Hướng dẫn cài đặt**
 
-To learn more, take a look at the following resources:
+**Backend:** cd backend pip install -r requirements.txt python flask_app.py
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+**Frontend:** npm install npm run dev
 
-<a href="https://v0.app/chat/api/kiro/clone/BacSiCode/IPS_IDS_DessionTree" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+------------------------------------------------------------------------
+
+⚙️ **Cấu hình API**
+Mặc định hệ thống kết nối đến:
+
+http://localhost:5000
+
+Khi triển khai thực tế, hãy cập nhật URL trong file ids-detector.tsx trỏ về server Flask của bạn.
+
+------------------------------------------------------------------------
+
+👤 **Tác giả**
+
+Lê Nguyễn Hồng Phúc (Phuc Le)
+
+------------------------------------------------------------------------
