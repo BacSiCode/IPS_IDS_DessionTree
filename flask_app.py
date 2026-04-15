@@ -108,9 +108,13 @@ def predict():
             'message': str(e)
         }), 500
 
-@app.route('/api/logs', methods=['GET'])
+@app.route('/api/logs', methods=['GET', 'DELETE'])
 def get_logs():
-    """Get analysis logs"""
+    """Get or clear analysis logs"""
+    if request.method == 'DELETE':
+        analysis_logs.clear()
+        return jsonify({'message': 'Logs cleared successfully'})
+    
     return jsonify({
         'logs': list(reversed(analysis_logs[-50:]))  # Return last 50, reversed (newest first)
     })

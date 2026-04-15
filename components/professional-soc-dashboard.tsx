@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, CheckCircle, Shield, RotateCcw, Upload, Activity, AlertTriangle, TrendingUp } from 'lucide-react'
+import { AlertCircle, CheckCircle, Shield, RotateCcw, Upload, Trash2 as Trash2Icon } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface DetectionResult {
@@ -57,13 +57,8 @@ export function ProfessionalSOCDashboard() {
   })
 
   // Live Monitoring Tab State
-  const [liveActive, setLiveActive] = useState(false)
-  const [alerts, setAlerts] = useState<AlertItem[]>([])
-  const [liveLogs, setLiveLogs] = useState<LogEntry[]>([])
-  const [trafficData, setTrafficData] = useState<TrafficDataPoint[]>([])
-  const [totalTraffic, setTotalTraffic] = useState(0)
-  const [attackCount, setAttackCount] = useState(0)
-  const [threatLevel, setThreatLevel] = useState<'safe' | 'warning' | 'critical'>('safe')
+  const [isLiveMonitor, setIsLiveMonitor] = useState(false)
+  const [logs, setLogs] = useState<LogEntry[]>([])
 
   const FLASK_API_URL = process.env.NEXT_PUBLIC_FLASK_API_URL || 'http://localhost:5000'
 
@@ -82,72 +77,40 @@ export function ProfessionalSOCDashboard() {
     loadOptions()
   }, [])
 
-  // Simulate live monitoring data
+  // Fetch logs from backend
+  const fetchLogs = async () => {
+    try {
+      const response = await fetch(`${FLASK_API_URL}/api/logs`)
+      const data = await response.json()
+      setLogs(data.logs || [])
+    } catch (error) {
+      console.error('Failed to fetch logs:', error)
+    }
+  }
+
+  // Live monitoring - fetches real data from backend every 1500ms
   useEffect(() => {
-    if (!liveActive) return
+    if (!isLiveMonitor) return
 
-    const interval = setInterval(() => {
-      const isAttack = Math.random() > 0.8
-      const newTraffic = Math.floor(Math.random() * 1000) + 100
-
-      // Update metrics
-      setTotalTraffic((prev) => prev + newTraffic)
-      if (isAttack) {
-        setAttackCount((prev) => prev + 1)
-      }
-
-      // Add to live logs
-      const protocols = ['tcp', 'udp', 'icmp']
-      const services = ['http', 'https', 'ssh', 'ftp', 'dns', 'smtp']
-      const newLog: LogEntry = {
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-        protocol: protocols[Math.floor(Math.random() * protocols.length)],
-        service: services[Math.floor(Math.random() * services.length)],
-        status: isAttack ? 'ATTACK_DETECTED' : 'NORMAL',
-        confidence: Math.floor(Math.random() * 40 + 60),
-        src_bytes: Math.floor(Math.random() * 5000),
-        dst_bytes: Math.floor(Math.random() * 5000),
-      }
-      setLiveLogs((prev) => [newLog, ...prev.slice(0, 29)])
-
-      // Add alert if attack
-      if (isAttack) {
-        const attackTypes = ['DoS', 'Port Scan', 'Brute Force', 'Data Exfil', 'Malware']
-        const newAlert: AlertItem = {
-          id: Date.now().toString(),
-          time: new Date().toLocaleTimeString('vi-VN'),
-          type: attackTypes[Math.floor(Math.random() * attackTypes.length)],
-          confidence: Math.floor(Math.random() * 40 + 60),
-        }
-        setAlerts((prev) => [newAlert, ...prev.slice(0, 9)])
-      }
-
-      // Update chart data
-      setTrafficData((prev) => {
-        const newData = [
-          ...prev,
-          {
-            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            normal: Math.floor(Math.random() * 800) + 100,
-            attack: isAttack ? Math.floor(Math.random() * 400) + 50 : 0,
-          },
-        ]
-        return newData.slice(-20)
-      })
-
-      // Update threat level
-      const attackRate = attackCount / (totalTraffic + 1)
-      if (attackRate > 0.3) {
-        setThreatLevel('critical')
-      } else if (attackRate > 0.1) {
-        setThreatLevel('warning')
-      } else {
-        setThreatLevel('safe')
-      }
-    }, 1000)
+    fetchLogs()
+    const interval = setInterval(fetchLogs, 1500)
 
     return () => clearInterval(interval)
-  }, [liveActive, attackCount, totalTraffic])
+  }, [isLiveMonitor])
+
+  // Clear logs function
+  const handleClearLogs = async () => {
+    try {
+      const response = await fetch(`${FLASK_API_URL}/api/logs`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        setLogs([])
+      }
+    } catch (error) {
+      console.error('Failed to clear logs:', error)
+    }
+  }
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -237,24 +200,6 @@ export function ProfessionalSOCDashboard() {
       setUploadingBatch(false)
       e.target.value = ''
     }
-  }
-
-  const getThreatLevelColor = () => {
-    if (threatLevel === 'critical') return 'text-red-500'
-    if (threatLevel === 'warning') return 'text-yellow-500'
-    return 'text-green-500'
-  }
-
-  const getThreatLevelBg = () => {
-    if (threatLevel === 'critical') return 'bg-red-500/10'
-    if (threatLevel === 'warning') return 'bg-yellow-500/10'
-    return 'bg-green-500/10'
-  }
-
-  const getThreatLevelText = () => {
-    if (threatLevel === 'critical') return 'Nguy Hiểm'
-    if (threatLevel === 'warning') return 'Cảnh Báo'
-    return 'An Toàn'
   }
 
   return (
@@ -485,192 +430,88 @@ export function ProfessionalSOCDashboard() {
 
           {/* Tab 2: Live Monitoring */}
           <TabsContent value="live" className="space-y-6">
-            {/* Toggle & Metrics */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-3 h-3 rounded-full animate-pulse ${
-                      liveActive ? 'bg-red-500' : 'bg-green-500'
-                    }`}
-                  />
-                  <span className="font-medium">
-                    {liveActive ? 'Giám sát Active' : 'Giám sát Inactive'}
-                  </span>
+            {/* Live Radar Toggle Section */}
+            <Card className="border-border shadow-sm bg-primary/5 border-primary/30">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Chế độ Radar (Live Monitoring)</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Tự động cập nhật bản ghi lưu lượng mạng thực tế bay qua Card mạng
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setIsLiveMonitor(!isLiveMonitor)}
+                    variant={isLiveMonitor ? 'destructive' : 'default'}
+                    className="whitespace-nowrap"
+                  >
+                    {isLiveMonitor ? '⏹ Dừng Giám Sát' : '▶ Bật Giám Sát Real-time'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Logs Table Section */}
+            <Card className="border-border shadow-sm">
+              <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Lịch Sử Phân Tích</CardTitle>
+                  <CardDescription>Các phân tích thực tế từ backend</CardDescription>
                 </div>
                 <Button
-                  onClick={() => setLiveActive(!liveActive)}
-                  className={liveActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}
+                  onClick={handleClearLogs}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
                 >
-                  {liveActive ? 'Tắt Giám Sát' : 'Bật Giám Sát Real-time'}
+                  <Trash2Icon className="w-4 h-4" />
+                  Xóa Lịch Sử
                 </Button>
-              </div>
-
-              {/* Metric Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border-border shadow-sm">
-                  <CardContent className="pt-6">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Tổng Lưu Lượng</p>
-                        <p className="text-2xl font-bold">{totalTraffic}</p>
-                      </div>
-                      <Activity className="w-8 h-8 text-primary opacity-50" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border shadow-sm border-red-500/30 bg-red-500/5">
-                  <CardContent className="pt-6">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Số Vụ Tấn Công</p>
-                        <p className="text-2xl font-bold text-red-500">{attackCount}</p>
-                      </div>
-                      <AlertTriangle className="w-8 h-8 text-red-500 opacity-50" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className={`border-border shadow-sm ${getThreatLevelBg()}`}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Mức Độ Đe Dọa</p>
-                        <p className={`text-2xl font-bold ${getThreatLevelColor()}`}>
-                          {getThreatLevelText()}
-                        </p>
-                      </div>
-                      <TrendingUp className={`w-8 h-8 ${getThreatLevelColor()} opacity-50`} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Split View: Alerts & Logs */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left: Alerts */}
-              <Card className="border-red-500/30 bg-red-500/5">
-                <CardHeader className="border-b border-red-500/30">
-                  <CardTitle className="text-red-500">Cảnh Báo Đe Dọa</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {alerts.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        Không có cảnh báo
-                      </p>
-                    ) : (
-                      alerts.map((alert) => (
-                        <div
-                          key={alert.id}
-                          className="flex items-start gap-3 p-3 rounded border border-red-500/20 bg-red-500/10"
-                        >
-                          <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5 animate-pulse" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-red-500">{alert.type}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{alert.time}</p>
-                            <p className="text-xs text-foreground/70 mt-1">
-                              Độ tin cậy: <span className="font-bold">{alert.confidence}%</span>
-                            </p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Right: Live Logs */}
-              <Card className="border-border shadow-sm">
-                <CardHeader className="border-b border-border">
-                  <CardTitle>Nhật Ký Hệ Thống Live</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="space-y-1 text-xs">
-                      {liveLogs.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">
-                          Bắt đầu giám sát để xem nhật ký
-                        </p>
-                      ) : (
-                        liveLogs.map((log, idx) => (
-                          <div
-                            key={idx}
-                            className={`grid grid-cols-5 gap-2 p-2 rounded ${
-                              log.status === 'ATTACK_DETECTED'
-                                ? 'bg-red-500/10 border-l-2 border-red-500'
-                                : 'hover:bg-secondary/30'
-                            }`}
-                          >
-                            <div className="text-muted-foreground">{log.timestamp}</div>
-                            <div>{log.protocol.toUpperCase()}</div>
-                            <div>{log.service}</div>
-                            <div className="text-right">{log.src_bytes}</div>
-                            <div className="text-right">
-                              <span
-                                className={
-                                  log.status === 'ATTACK_DETECTED'
-                                    ? 'text-red-500 font-bold'
-                                    : 'text-green-500'
-                                }
-                              >
-                                {log.status === 'ATTACK_DETECTED' ? '⚠️' : '✓'}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Chart */}
-            <Card className="border-border shadow-sm">
-              <CardHeader className="border-b border-border">
-                <CardTitle>Biểu Đồ Lưu Lượng</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
-                {trafficData.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    Bắt đầu giám sát để xem biểu đồ
-                  </div>
+                {logs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    {isLiveMonitor ? 'Chờ dữ liệu từ backend...' : 'Bật giám sát để xem dữ liệu'}
+                  </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={trafficData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                      <XAxis dataKey="time" stroke="#666" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#666" style={{ fontSize: '12px' }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#1a1a1a',
-                          border: '1px solid #333',
-                          borderRadius: '6px',
-                        }}
-                        labelStyle={{ color: '#fff' }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="normal"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Bình thường"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="attack"
-                        stroke="#ef4444"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Tấn công"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="border-b border-border">
+                        <tr>
+                          <th className="text-left py-3 px-2 font-medium">Thời Gian</th>
+                          <th className="text-left py-3 px-2 font-medium">Giao Thức</th>
+                          <th className="text-left py-3 px-2 font-medium">Dịch Vụ</th>
+                          <th className="text-left py-3 px-2 font-medium">Kết Quả</th>
+                          <th className="text-left py-3 px-2 font-medium">Độ Tin Cậy</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {logs.map((log, idx) => (
+                          <tr key={idx} className="border-b border-border/50 hover:bg-secondary/30">
+                            <td className="py-3 px-2 text-xs text-muted-foreground">
+                              {new Date(log.timestamp).toLocaleTimeString('vi-VN')}
+                            </td>
+                            <td className="py-3 px-2 text-xs">{log.protocol}</td>
+                            <td className="py-3 px-2 text-xs">{log.service}</td>
+                            <td className="py-3 px-2">
+                              <span
+                                className={`text-xs font-medium px-2 py-1 rounded ${
+                                  log.status === 'NORMAL'
+                                    ? 'bg-green-500/20 text-green-700'
+                                    : 'bg-red-500/20 text-red-700'
+                                }`}
+                              >
+                                {log.status === 'NORMAL' ? 'An Toàn' : 'Tấn Công'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2">
+                              <span className="text-xs font-bold">{log.confidence}%</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </CardContent>
             </Card>
