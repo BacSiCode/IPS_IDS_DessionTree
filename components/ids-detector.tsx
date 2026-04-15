@@ -68,9 +68,9 @@ function getApiBase() {
   if (process.env.NEXT_PUBLIC_NIDS_API_URL) {
     return process.env.NEXT_PUBLIC_NIDS_API_URL
   }
-  if (typeof window === 'undefined') return 'http://localhost:5000'
+  if (typeof window === 'undefined') return 'http://localhost:5005'
   const host = window.location.hostname
-  return `http://${host}:5000` // fallback for local deploy
+  return `http://${host}:5005` // fallback for local deploy
 }
 
 const getStatusConfig = (status: string) => {
