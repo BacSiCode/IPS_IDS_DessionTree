@@ -558,7 +558,7 @@ export function IDSDetector() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    {logs.map((log, idx) => {
+                    logs.map((log, idx) => {
                       const cfg = getStatusConfig(log.status);
                       return (
                       <TableRow 
@@ -585,8 +585,7 @@ export function IDSDetector() {
                            {log.confidence}%
                         </TableCell>
                       </TableRow>
-                    )})}
-
+                    )})
                   )}
                 </TableBody>
               </Table>
