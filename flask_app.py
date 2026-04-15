@@ -9,16 +9,20 @@ app = Flask(__name__)
 CORS(app)
 
 # Load model
-print("Loading model...")
+print("Loading model and label encoder...")
 try:
     with open('model.pkl', 'rb') as f:
         model = pickle.load(f)
-except:
+    with open('label_encoder.pkl', 'rb') as f:
+        label_encoder = pickle.load(f)
+except Exception as e:
     model = None
-    print("Warning: model.pkl not found/failed to load. Please train first.")
+    label_encoder = None
+    print(f"Warning: model components failed to load: {e}")
 
 # Store analysis logs
 analysis_logs = []
+
 
 def predict_single(features_dict):
     """Make prediction for single record with 14 features"""
@@ -60,11 +64,17 @@ def predict_single(features_dict):
         
     features = np.array([feature_arr])
     
-    prediction = model.predict(features)[0]
+    prediction_id = model.predict(features)[0]
     probability = model.predict_proba(features)[0]
     confidence = float(max(probability)) * 100
     
-    return int(prediction), confidence
+    # Use label_encoder to get the real name (DDoS, BENIGN, etc)
+    if label_encoder:
+        prediction_label = label_encoder.inverse_transform([prediction_id])[0]
+    else:
+        prediction_label = "ATTACK_DETECTED" if prediction_id == 1 else "NORMAL"
+        
+    return prediction_label, confidence
 
 @app.route('/api/options', methods=['GET'])
 def get_options():
@@ -82,14 +92,10 @@ def predict():
             'Packet Length Mean': data.get('f5')
         }
         
-        prediction, confidence = predict_single(features_dict)
+        prediction_label, confidence = predict_single(features_dict)
         
-        if prediction == 1:
-            status = "ATTACK_DETECTED"
-            message = "Phát hiện tấn công"
-        else:
-            status = "NORMAL"
-            message = "Bình thường"
+        status = prediction_label
+        message = f"AI Classified: {status}"
             
         log_entry = {
             'timestamp': (datetime.utcnow() + timedelta(hours=7)).isoformat(),
@@ -106,7 +112,7 @@ def predict():
         return jsonify({
             'status': status,
             'message': message,
-            'prediction': prediction,
+            'prediction': status,
             'confidence': round(confidence, 2)
         })
     except Exception as e:
@@ -145,17 +151,18 @@ def handle_logs():
             }
             
             # THE AI DECIDES! 🧠
-            prediction, confidence = predict_single(features_dict)
+            prediction_label, confidence = predict_single(features_dict)
             
-            # Differentiate based on AI Decision Tree
-            status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
+            # Use AI label directly
+            status = prediction_label
             
             # Overwrite if it's a confirmed static threat (like Honeypot)
             external_status = data.get('status')
             if external_status == 'ATTACK_DETECTED' and confidence < 80:
-                 status = "ATTACK_DETECTED" # Trust the sensor if it's a clear honeypot hit
+                 status = "DDoS" # Keep it as attack if sensor is very sure
 
             source_ip = data.get('ip') if 'ip' in data else 'Unknown'
+
             path = data.get('path') if 'path' in data else '/'
 
             log_entry = {

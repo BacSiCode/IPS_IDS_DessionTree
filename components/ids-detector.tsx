@@ -73,6 +73,58 @@ function getApiBase() {
   return `http://${host}:5000` // fallback for local deploy
 }
 
+const getStatusConfig = (status: string) => {
+    const s = status?.toUpperCase() || '';
+    if (s === 'BENIGN' || s === 'NORMAL' || s === 'PASS') {
+      return { 
+        color: 'text-emerald-400', 
+        bg: 'bg-emerald-500/10', 
+        border: 'border-emerald-500/20', 
+        icon: <CheckCircle className="w-3 h-3" />, 
+        label: 'PASS',
+        isAttack: false
+      };
+    }
+    if (s === 'DDOS') {
+      return { 
+        color: 'text-red-400', 
+        bg: 'bg-red-500/20', 
+        border: 'border-red-500/30', 
+        icon: <ShieldAlert className="w-3 h-3" />, 
+        label: 'DDOS ATTACK',
+        isAttack: true
+      };
+    }
+    if (s === 'PORTSCAN') {
+      return { 
+        color: 'text-orange-400', 
+        bg: 'bg-orange-500/20', 
+        border: 'border-orange-500/30', 
+        icon: <Zap className="w-3 h-3" />, 
+        label: 'PORT SCAN',
+        isAttack: true
+      };
+    }
+    if (s === 'BOT') {
+      return { 
+        color: 'text-purple-400', 
+        bg: 'bg-purple-500/20', 
+        border: 'border-purple-500/30', 
+        icon: <Network className="w-3 h-3" />, 
+        label: 'BOT ACTIVITY',
+        isAttack: true
+      };
+    }
+    return { 
+      color: 'text-red-500', 
+      bg: 'bg-red-500/20', 
+      border: 'border-red-500/30', 
+      icon: <ShieldAlert className="w-3 h-3" />, 
+      label: status,
+      isAttack: true
+    };
+  };
+
 // ──────────────────────────── Component ────────────────────────────
 export function IDSDetector() {
   // ─── State ─────────────────────────
@@ -221,14 +273,14 @@ export function IDSDetector() {
 
   // ─── Stats & Data for Chart ─────────
   const totalLogs = logs.length
-  const attackLogs = logs.filter((l) => l.status === 'ATTACK_DETECTED').length
+  const attackLogs = logs.filter((l) => getStatusConfig(l.status).isAttack).length
   const normalLogs = totalLogs - attackLogs
 
   const chartData = useMemo(() => {
     // Take the last 20 elements and map them for the chart
     return [...logs].reverse().slice(-20).map((log, i) => ({
       name: new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      confidence: log.status === 'ATTACK_DETECTED' ? log.confidence : 100 - log.confidence,
+      confidence: getStatusConfig(log.status).isAttack ? log.confidence : 100 - log.confidence,
       type: log.status
     }))
   }, [logs])
@@ -506,10 +558,12 @@ export function IDSDetector() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    logs.map((log, idx) => (
+                    {logs.map((log, idx) => {
+                      const cfg = getStatusConfig(log.status);
+                      return (
                       <TableRow 
                         key={idx} 
-                        className={`border-b border-white/5 transition-all ${log.status === 'ATTACK_DETECTED' ? 'bg-red-500/[0.03] hover:bg-red-500/[0.08]' : 'hover:bg-white/[0.02]'}`}
+                        className={`border-b border-white/5 transition-all ${cfg.isAttack ? 'bg-red-500/[0.03] hover:bg-red-500/[0.08]' : 'hover:bg-white/[0.02]'}`}
                       >
                         <TableCell className="font-mono text-xs text-slate-400">
                           {new Date(log.timestamp).toLocaleTimeString('vi-VN')}
@@ -523,21 +577,16 @@ export function IDSDetector() {
                            {log.note || 'Internal'}
                         </TableCell>
                         <TableCell>
-                           {log.status === 'ATTACK_DETECTED' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-bold tracking-wider uppercase shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                <ShieldAlert className="w-3 h-3" /> DDOS Hit
-                              </span>
-                           ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold tracking-wider uppercase">
-                                <CheckCircle className="w-3 h-3" /> Pass
-                              </span>
-                           )}
+                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${cfg.bg} border ${cfg.border} ${cfg.color} text-[10px] font-bold tracking-wider uppercase shadow-[0_0_10px_rgba(0,0,0,0.2)]`}>
+                             {cfg.icon} {cfg.label}
+                           </span>
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm font-bold text-slate-200">
                            {log.confidence}%
                         </TableCell>
                       </TableRow>
-                    ))
+                    )})}
+
                   )}
                 </TableBody>
               </Table>
