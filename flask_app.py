@@ -108,12 +108,65 @@ def predict():
             'message': str(e)
         }), 500
 
-@app.route('/api/logs', methods=['GET'])
-def get_logs():
-    """Get analysis logs"""
-    return jsonify({
-        'logs': list(reversed(analysis_logs[-50:]))  # Return last 50, reversed (newest first)
-    })
+@app.route('/api/logs', methods=['GET', 'POST', 'DELETE'])
+def handle_logs():
+    if request.method == 'GET':
+        """Get analysis logs"""
+        return jsonify({
+            'logs': list(reversed(analysis_logs[-50:]))  # Return last 50, reversed (newest first)
+        })
+        
+    elif request.method == 'DELETE':
+        """Clear all analysis logs"""
+        analysis_logs.clear()
+        return jsonify({'message': 'Logs cleared successfully'})
+        
+    elif request.method == 'POST':
+        """Receive external traffic log (e.g. from SpiritAds Express server)"""
+        try:
+            data = request.get_json() if request.is_json else request.form
+            
+            # Extract features or map Web concepts to ML features
+            duration = float(data.get('duration', 1.0))
+            protocol = str(data.get('protocol', 'tcp')).strip().lower()
+            service = str(data.get('service', 'http')).strip().lower()
+            src_bytes = float(data.get('src_bytes', 500))
+            dst_bytes = float(data.get('dst_bytes', 1000))
+            
+            source_ip = data.get('ip', 'Unknown')
+            path = data.get('path', '/')
+            
+            prediction, confidence = predict_single(duration, protocol, service, src_bytes, dst_bytes)
+            
+            # If the external system ALREADY flagged it, override the status
+            external_status = data.get('status')
+            if external_status in ['ATTACK_DETECTED', 'NORMAL']:
+                status = external_status
+                # Adjust confidence if overridden
+                if (status == 'ATTACK_DETECTED' and prediction == 0) or (status == 'NORMAL' and prediction == 1):
+                     confidence = 99.0
+            else:
+                status = "ATTACK_DETECTED" if prediction == 1 else "NORMAL"
+
+            # Log the analysis
+            log_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'duration': duration,
+                'protocol': protocol,
+                'service': service,
+                'src_bytes': src_bytes,
+                'dst_bytes': dst_bytes,
+                'status': status,
+                'confidence': round(confidence, 2),
+                'note': f"IP: {source_ip} | Path: {path}"
+            }
+            analysis_logs.append(log_entry)
+            if len(analysis_logs) > 100:
+                analysis_logs.pop(0)
+                
+            return jsonify({'success': True, 'status': status}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
 
 @app.route('/api/batch', methods=['POST'])
 def batch_predict():
@@ -194,4 +247,4 @@ def batch_predict():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)
